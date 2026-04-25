@@ -9,7 +9,6 @@ For competing, fork this repository. Please refer to the [Repository use for hac
 * [Use of Repository](#use-of-repository)
   * [Setup](#setup)
   * [Workflow engine development](#workflow-engine-development)
-  * [Turning in your work](#turning-in-your-work)
   * [Repository structure](#repository-structure)
     * [Engine code](#engine-code)
     * [SPRT folder](#sprt-folder)
@@ -156,3 +155,17 @@ The docker image runs the `test_sprt.sh` as entrypoint with 3 parameters:
 - $3: sprt_presets.ini preset name (default: 'default')
 
 In the docker-compose.yml file you can change these parameters.
+
+# Bonus
+
+## Profiles
+There are 2 additional profiles defined:
+- `ci`: for consistent CI builds.
+- `strength`: for testing strength of the engine with bestmove puzzles.
+- default: doesn't run strength tests.
+
+Running strength tests:
+```shell
+mvn test -Pstrength
+```
+Note: they don't have to pass, more an indication of strength.
