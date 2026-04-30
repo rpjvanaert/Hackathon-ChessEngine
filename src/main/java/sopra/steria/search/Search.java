@@ -127,30 +127,16 @@ public class Search {
         return bestScore;
     }
 
-    private boolean is256thNode() {
-        return (nodes & 255) == 0;
-    }
-
     private boolean isNthNode(int n) {
         return (nodes & n) == 0;
     }
 
     private boolean isDecisive(SearchResult result) {
-        return Math.abs(result.getScore()) >= MATE_SCORE - setting.maxDepth();
+        return Math.abs(result.getScore()) >= MATE_SCORE - result.getDepth();
     }
 
     private long getTimeTakenMillis() {
         return System.currentTimeMillis() - startTime;
-    }
-
-    private boolean shouldStop() {
-        if (stop) return true;
-        if (Thread.currentThread().isInterrupted()) {
-            stop = true;
-            return true;
-        }
-        stop = setting.timeLimit() > 0 && getTimeTakenMillis() >= setting.timeLimit();
-        return stop;
     }
 
     private void checkStop() {
