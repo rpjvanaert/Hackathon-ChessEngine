@@ -25,8 +25,7 @@ public class GoodEvaluator implements Evaluator {
             int materialValue = Helpers.pieceValue(type);
             score += (isWhite
                     ? PstTables.PST[type][mirroredIndex]
-                    : -PstTables.PST[type][mirroredIndex])
-                    * materialValue;
+                    : -PstTables.PST[type][mirroredIndex]);
             score += materialValue;
         }
 
