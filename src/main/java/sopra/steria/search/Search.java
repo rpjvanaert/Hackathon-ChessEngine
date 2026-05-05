@@ -3,8 +3,8 @@ package sopra.steria.search;
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
-import sopra.steria.evaluation.PstEvaluator;
 import sopra.steria.evaluation.Evaluator;
+import sopra.steria.evaluation.GoodEvaluator;
 import sopra.steria.ordering.MoveOrderer;
 import sopra.steria.ordering.GoodOrderer;
 
@@ -23,7 +23,7 @@ public class Search {
     private BMove[][] killers;
 
     public Search() {
-        this.evaluator = new PstEvaluator();
+        this.evaluator = new GoodEvaluator();
         this.moveOrderer = new GoodOrderer();
         this.killers = new BMove[32][2];
     }
@@ -131,10 +131,6 @@ public class Search {
         }
 
         return bestScore;
-    }
-
-    private BMove[] getKillersForPly(int ply) {
-        return killers[ply];
     }
 
     private boolean isNthNode(int n) {

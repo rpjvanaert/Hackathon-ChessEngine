@@ -2,8 +2,9 @@ package sopra.steria.evaluation;
 
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
+import sopra.steria.helpers.Helpers;
 
-public class PstEvaluator implements Evaluator {
+public class GoodEvaluator implements Evaluator {
     private static final int PAWN_VALUE   = 100;
     private static final int KNIGHT_VALUE = 320;
     private static final int BISHOP_VALUE = 330;
@@ -38,8 +39,10 @@ public class PstEvaluator implements Evaluator {
                 default -> 0;
             };
 
-            score += isWhite ? bonus : -bonus;
+            score += isWhite ? bonus : -bonus; // PST
+            score += Helpers.pieceValue(type); // Material Value
         }
+
         return board.isWhiteToMove() ? score : -score;
     }
 }
