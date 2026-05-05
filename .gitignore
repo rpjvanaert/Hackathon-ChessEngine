@@ -95,3 +95,6 @@ test-sprt/games.pgn
 /test-sprt/config.json
 /test-sprt/output/games.pgn
 Hackathon-ChessEngine.code-workspace
+
+magicData.bin
+precomputed_data.bin
