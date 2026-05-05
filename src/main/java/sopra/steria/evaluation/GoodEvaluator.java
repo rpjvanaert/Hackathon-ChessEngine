@@ -50,43 +50,55 @@ public class GoodEvaluator implements Evaluator {
             score += isWhite ? bonus : -bonus; // PST
             score += Helpers.pieceValue(type); // Material Value
         }
-        int mobilityScore = evaluateMobilityApprox(board);
+        int mobilityScore = evaluatePieceActivity(board);
         score += mobilityScore;
 
         return board.isWhiteToMove() ? score : -score;
     }
 
-    private int evaluateMobilityApprox(BBoard board) {
+    private int evaluatePieceActivity(BBoard board) {
         int[] pieces = board.getPieceBoards();
-        int whiteActivity = 0;
-        int blackActivity = 0;
+        int score = 0;
 
-        // Count active pieces for each side
         for (int sq = 0; sq < 64; sq++) {
             int piece = pieces[sq];
             if (piece == BPiece.none) continue;
 
             boolean isWhite = BPiece.isWhite(piece);
             int type = BPiece.getPieceType(piece);
+            int file = sq & 7;
+            int rank = sq >> 3;
 
-            // Weight by piece type
-            int weight = switch (type) {
-                case BPiece.pawn -> 1;     // Pawns: limited mobility
-                case BPiece.knight -> 3;   // Knights: high activity
-                case BPiece.bishop -> 2;   // Bishops: medium activity
-                case BPiece.rook -> 3;     // Rooks: high activity
-                case BPiece.queen -> 4;    // Queens: highest activity
-                case BPiece.king -> 1;     // Kings: limited in middlegame
-                default -> 0;
-            };
+            int bonus = 0;
 
-            if (isWhite) {
-                whiteActivity += weight;
-            } else {
-                blackActivity += weight;
+            // Center control bonus (d4, e4, d5, e5 = 27, 28, 35, 36)
+            if ((file >= 3 && file <= 4) && (rank >= 3 && rank <= 4)) {
+                bonus += switch (type) {
+                    case BPiece.pawn -> 10;
+                    case BPiece.knight -> 25;
+                    case BPiece.bishop -> 15;
+                    case BPiece.rook -> 10;
+                    case BPiece.queen -> 20;
+                    case BPiece.king -> 0;
+                    default -> 0;
+                };
             }
-        }
 
-        return (whiteActivity - blackActivity) * MOBILITY_WEIGHT;
+            // Starting square penalty (knights/bishops trapped)
+            if (type == BPiece.knight && ((isWhite && sq == 1) || (!isWhite && sq == 62))) {
+                bonus -= 15; // Knight on b1/g8 is trapped
+            }
+            if (type == BPiece.bishop && ((isWhite && (sq == 2 || sq == 5)) || (!isWhite && (sq == 57 || sq == 62)))) {
+                bonus -= 10; // Bishop on starting square usually blocked
+            }
+            // Rank advancement bonus for minor pieces
+            if (type == BPiece.knight || type == BPiece.bishop) {
+                int rankDist = isWhite ? rank : 7 - rank;
+                bonus += rankDist * 2; // Bonus for advanced pieces
+            }
+
+            score += isWhite ? bonus : -bonus;
+        }
+        return score;
     }
 }

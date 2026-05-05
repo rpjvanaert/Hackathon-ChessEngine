@@ -34,6 +34,7 @@ public class Search {
         this.setting = setting;
         this.stop = false;
 
+        clearKillers();
         SearchResult bestResult = new SearchResult();
         bestResult.setScore(-INF);
 
@@ -69,6 +70,7 @@ public class Search {
         this.nodes = 0;
 
         BMove[] moves = new MoveGenerator(board).generateMoves(false);
+        moveOrderer.orderMoves(moves, board, killers, 0);
 
         for (BMove move : moves) {
             checkStop();
@@ -205,6 +207,12 @@ public class Search {
         return System.currentTimeMillis() - startTime;
     }
 
+    private void clearKillers() {
+        for (int i = 0; i < killers.length; i++) {
+            killers[i][0] = null;
+            killers[i][1] = null;
+        }
+    }
     private void checkStop() {
         if (stop) throw new SearchInterruptedException();
         if (Thread.currentThread().isInterrupted()) {
