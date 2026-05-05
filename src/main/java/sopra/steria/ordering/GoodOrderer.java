@@ -5,8 +5,15 @@ import knight.clubbing.core.BMove;
 import knight.clubbing.core.BPiece;
 
 import static sopra.steria.helpers.Helpers.pieceValue;
+import static sopra.steria.helpers.Helpers.promotionPriority;
 import static sopra.steria.helpers.Helpers.scoreCapture;
 
+
+/**
+ * ordering process:
+ * 1. promotions
+ * 2. mvv lva
+ */
 public class GoodOrderer implements MoveOrderer {
 
     @Override
@@ -24,13 +31,20 @@ public class GoodOrderer implements MoveOrderer {
         int[] pieceBoards = board.getPieceBoards();
         int attacker = BPiece.getPieceType(pieceBoards[move.startSquare()]);
         int victim = this.getVictimPieceType(move, board);
-        int attackerVal = pieceValue(attacker);
-        int victimVal = pieceValue(victim);
 
-        if (victim == BPiece.none) {
-            return 0; // don't penalize quiet moves
+        int score = 0;
+
+        if (move.isPromotion()) {
+            score += 20000;
+            score += promotionPriority(move);
         }
-        return scoreCapture(victimVal, attackerVal);
+        if (victim != BPiece.none) {
+            int attackerVal = pieceValue(attacker);
+            int victimVal = pieceValue(victim);
+            score += 10000;
+            score += scoreCapture(victimVal, attackerVal);
+        }
+        return score;
     }
 
     private void sortMovesByScore(BMove[] moves, int[] scores) {

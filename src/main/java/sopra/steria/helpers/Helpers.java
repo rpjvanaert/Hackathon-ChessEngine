@@ -1,5 +1,6 @@
 package sopra.steria.helpers;
 
+import knight.clubbing.core.BMove;
 import knight.clubbing.core.BPiece;
 
 public class Helpers {
@@ -24,5 +25,15 @@ public class Helpers {
      */
     public static int scoreCapture(int victimValue, int attackerValue) {
         return victimValue * 10 - attackerValue; // Higher score for capturing more valuable pieces
+    }
+
+    public static int promotionPriority(BMove move) {
+        return switch (move.promotionPieceType()) {
+            case BPiece.queen -> 400;
+            case BPiece.knight -> 300; // usually more tactical than rook/bishop underpromotions
+            case BPiece.rook -> 200;
+            case BPiece.bishop -> 100;
+            default -> 0;
+        };
     }
 }
