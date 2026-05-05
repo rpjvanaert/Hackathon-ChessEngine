@@ -7,7 +7,7 @@ import knight.clubbing.core.BPiece;
 import static sopra.steria.helpers.Helpers.pieceValue;
 import static sopra.steria.helpers.Helpers.scoreCapture;
 
-public class MvvLvaOrderer implements MoveOrderer {
+public class GoodOrderer implements MoveOrderer {
 
     @Override
     public void orderMoves(BMove[] moves, BBoard board) {
