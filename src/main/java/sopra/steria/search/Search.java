@@ -3,9 +3,8 @@ package sopra.steria.search;
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
-import sopra.steria.evaluation.BadEvaluator;
 import sopra.steria.evaluation.Evaluator;
-import sopra.steria.ordering.BadMoveOrderer;
+import sopra.steria.evaluation.GoodEvaluator;
 import sopra.steria.ordering.MoveOrderer;
 import sopra.steria.ordering.MvvLvaOrderer;
 
@@ -23,7 +22,7 @@ public class Search {
     private final MoveOrderer moveOrderer;
 
     public Search() {
-        this.evaluator = new BadEvaluator();
+        this.evaluator = new GoodEvaluator();
         this.moveOrderer = new MvvLvaOrderer();
     }
 
