@@ -35,6 +35,12 @@ public class BadMoveOrderer implements MoveOrderer {
             return MVV_LVA_OFFSET + victimValue - attackerValue / 100;
         }
 
+        if (move.isPromotion() && move.promotionPieceType() == BPiece.queen) {
+            return 9500; // Just below captures, well above killers
+        } else if (move.isPromotion()) {
+            return -100; // Underpromotions are rarely useful
+        }
+
         // Killer moves
         if (killers != null) {
             if (move.value() == killers[0]) return KILLER_SCORE_1;
