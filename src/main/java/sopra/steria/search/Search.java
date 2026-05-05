@@ -5,6 +5,7 @@ import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
 import sopra.steria.evaluation.Evaluator;
 import sopra.steria.evaluation.GoodEvaluator;
+import sopra.steria.helpers.Helpers;
 import sopra.steria.ordering.MoveOrderer;
 import sopra.steria.ordering.GoodOrderer;
 
@@ -95,6 +96,15 @@ public class Search {
             checkStop();
 
         if (depth <= 0) return quiescence(board, alpha, beta, ply);
+
+        // Null Move Pruning
+        if (depth >= 3 && !board.isInCheck() && Helpers.hasNonPawnMaterial(board)) {
+            board.makeNullMove();
+            int nullScore = -negamax(board, depth - 1 - 2, -beta, -beta + 1, ply + 1);
+            board.undoNullMove();
+
+            if (nullScore >= beta) return beta;
+        }
 
         int bestScore = -INF;
 
