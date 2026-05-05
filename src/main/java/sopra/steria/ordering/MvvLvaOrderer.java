@@ -23,7 +23,7 @@ public class MvvLvaOrderer implements MoveOrderer {
     private int score(BMove move, BBoard board) {
         int[] pieceBoards = board.getPieceBoards();
         int attacker = BPiece.getPieceType(pieceBoards[move.startSquare()]);
-        int victim = BPiece.getPieceType(pieceBoards[move.targetSquare()]);
+        int victim = this.getVictimPieceType(move, board);
         int attackerVal = pieceValue(attacker);
         int victimVal = pieceValue(victim);
 
@@ -49,5 +49,20 @@ public class MvvLvaOrderer implements MoveOrderer {
                 }
             }
         }
+    }
+
+    private int getVictimPieceType(BMove move, BBoard board) {
+        int[] pieceBoards = board.getPieceBoards();
+
+        // check for en passant if so select square behind
+        if (move.moveFlag() == BMove.enPassantCaptureFlag) {
+            // Board is in pre-move state here.
+            int capturedPawnSquare = board.isWhiteToMove()
+                    ? move.targetSquare() - 8
+                    : move.targetSquare() + 8;
+            return BPiece.getPieceType(pieceBoards[capturedPawnSquare]);
+        }
+
+        return BPiece.getPieceType(pieceBoards[move.targetSquare()]);
     }
 }
