@@ -5,8 +5,8 @@ import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
 import sopra.steria.evaluation.PstEvaluator;
 import sopra.steria.evaluation.Evaluator;
-import sopra.steria.ordering.BadMoveOrderer;
 import sopra.steria.ordering.MoveOrderer;
+import sopra.steria.ordering.GoodOrderer;
 
 import static sopra.steria.EngineConst.INF;
 import static sopra.steria.EngineConst.MATE_SCORE;
@@ -20,10 +20,12 @@ public class Search {
 
     private final Evaluator evaluator;
     private final MoveOrderer moveOrderer;
+    private BMove[][] killers;
 
     public Search() {
         this.evaluator = new PstEvaluator();
-        this.moveOrderer = new BadMoveOrderer();
+        this.moveOrderer = new GoodOrderer();
+        this.killers = new BMove[32][2];
     }
 
     public SearchResult bestMove(BBoard board, SearchSetting setting) {
@@ -98,7 +100,7 @@ public class Search {
 
         BMove[] nextMoves = new MoveGenerator(board).generateMoves(false);
 
-        moveOrderer.orderMoves(nextMoves, board);
+        moveOrderer.orderMoves(nextMoves, board, killers, ply);
 
         if (nextMoves.length == 0) {
             if (board.isInCheck())
@@ -120,11 +122,19 @@ public class Search {
             alpha = Math.max(alpha, score);
 
             if (alpha >= beta) {
+                if (killers[ply][0] == null || !killers[ply][0].equals(move)) {
+                    killers[ply][1] = killers[ply][0];
+                    killers[ply][0] = move;
+                }
                 break;
             }
         }
 
         return bestScore;
+    }
+
+    private BMove[] getKillersForPly(int ply) {
+        return killers[ply];
     }
 
     private boolean isNthNode(int n) {
