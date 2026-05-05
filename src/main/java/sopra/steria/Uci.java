@@ -213,7 +213,7 @@ public class Uci {
                     BMove[] someMoves = new MoveGenerator(board).generateMoves(false);
                     if (someMoves.length > 0) {
                         BadMoveOrderer badMoveOrderer = new BadMoveOrderer();
-                        badMoveOrderer.orderMoves(someMoves, board);
+                        badMoveOrderer.orderMoves(someMoves, board, null, null);
                         sendCommand("bestmove " + someMoves[0].getUci());
                     } else {
                         sendCommand("bestmove 0000");
