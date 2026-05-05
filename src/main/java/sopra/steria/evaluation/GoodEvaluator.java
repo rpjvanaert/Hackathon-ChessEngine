@@ -1,7 +1,9 @@
 package sopra.steria.evaluation;
 
 import knight.clubbing.core.BBoard;
+import knight.clubbing.core.BMove;
 import knight.clubbing.core.BPiece;
+import knight.clubbing.movegen.MoveGenerator;
 import sopra.steria.helpers.Helpers;
 
 public class GoodEvaluator implements Evaluator {
@@ -11,6 +13,9 @@ public class GoodEvaluator implements Evaluator {
     private static final int ROOK_VALUE   = 500;
     private static final int QUEEN_VALUE  = 900;
     private static final int KING_VALUE   = 20000;
+
+    // Mobility scoring (in centipawns per move)
+    private static final int MOBILITY_WEIGHT = 2; // +2 cp per extra move
 
     @Override
     public int evaluate(BBoard board) {
@@ -39,10 +44,28 @@ public class GoodEvaluator implements Evaluator {
                 default -> 0;
             };
 
+            // Mobility bonus
+
+
             score += isWhite ? bonus : -bonus; // PST
             score += Helpers.pieceValue(type); // Material Value
         }
+        int mobilityScore = evaluateMobility(board);
+        score += mobilityScore;
 
         return board.isWhiteToMove() ? score : -score;
+    }
+
+    private int evaluateMobility(BBoard board) {
+        BMove[] whiteMoves = new MoveGenerator(board).generateMoves(false);
+        int whiteMovesCount = whiteMoves.length;
+
+        // Switch to Black's perspective
+        board.makeNullMove();
+        BMove[] blackMoves = new MoveGenerator(board).generateMoves(false);
+        int blackMovesCount = blackMoves.length;
+        board.undoNullMove();
+
+        return (whiteMovesCount - blackMovesCount) * MOBILITY_WEIGHT;
     }
 }

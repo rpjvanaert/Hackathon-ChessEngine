@@ -2,6 +2,7 @@ package sopra.steria.search;
 
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BMove;
+import knight.clubbing.core.BPiece;
 import knight.clubbing.movegen.MoveGenerator;
 import sopra.steria.evaluation.Evaluator;
 import sopra.steria.evaluation.GoodEvaluator;
@@ -29,6 +30,7 @@ public class Search {
     }
 
     public SearchResult bestMove(BBoard board, SearchSetting setting) {
+        clearKillers();
         this.startTime = System.currentTimeMillis();
         this.setting = setting;
         this.stop = false;
@@ -122,9 +124,12 @@ public class Search {
             alpha = Math.max(alpha, score);
 
             if (alpha >= beta) {
-                if (killers[ply][0] == null || !killers[ply][0].equals(move)) {
-                    killers[ply][1] = killers[ply][0];
-                    killers[ply][0] = move;
+                int capturedPiece = board.getPieceBoards()[move.targetSquare()];
+                if (capturedPiece == BPiece.none) {
+                    if (killers[ply][0] == null || !killers[ply][0].equals(move)) {
+                        killers[ply][1] = killers[ply][0];
+                        killers[ply][0] = move;
+                    }
                 }
                 break;
             }
@@ -201,6 +206,12 @@ public class Search {
         return System.currentTimeMillis() - startTime;
     }
 
+    private void clearKillers() {
+        for (int i = 0; i < killers.length; i++) {
+            killers[i][0] = null;
+            killers[i][1] = null;
+        }
+    }
     private void checkStop() {
         if (stop) throw new SearchInterruptedException();
         if (Thread.currentThread().isInterrupted()) {
