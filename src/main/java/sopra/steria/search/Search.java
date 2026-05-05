@@ -26,11 +26,10 @@ public class Search {
     public Search() {
         this.evaluator = new GoodEvaluator();
         this.moveOrderer = new GoodOrderer();
-        this.killers = new BMove[32][2];
+        this.killers = new BMove[256][2];
     }
 
     public SearchResult bestMove(BBoard board, SearchSetting setting) {
-        clearKillers();
         this.startTime = System.currentTimeMillis();
         this.setting = setting;
         this.stop = false;
@@ -206,12 +205,6 @@ public class Search {
         return System.currentTimeMillis() - startTime;
     }
 
-    private void clearKillers() {
-        for (int i = 0; i < killers.length; i++) {
-            killers[i][0] = null;
-            killers[i][1] = null;
-        }
-    }
     private void checkStop() {
         if (stop) throw new SearchInterruptedException();
         if (Thread.currentThread().isInterrupted()) {

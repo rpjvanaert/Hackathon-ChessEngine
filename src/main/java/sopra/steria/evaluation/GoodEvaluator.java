@@ -15,7 +15,7 @@ public class GoodEvaluator implements Evaluator {
     private static final int KING_VALUE   = 20000;
 
     // Mobility scoring (in centipawns per move)
-    private static final int MOBILITY_WEIGHT = 2; // +2 cp per extra move
+    private static final int MOBILITY_WEIGHT = 1; // +1cp per extra move
 
     @Override
     public int evaluate(BBoard board) {
@@ -50,22 +50,43 @@ public class GoodEvaluator implements Evaluator {
             score += isWhite ? bonus : -bonus; // PST
             score += Helpers.pieceValue(type); // Material Value
         }
-        int mobilityScore = evaluateMobility(board);
+        int mobilityScore = evaluateMobilityApprox(board);
         score += mobilityScore;
 
         return board.isWhiteToMove() ? score : -score;
     }
 
-    private int evaluateMobility(BBoard board) {
-        BMove[] whiteMoves = new MoveGenerator(board).generateMoves(false);
-        int whiteMovesCount = whiteMoves.length;
+    private int evaluateMobilityApprox(BBoard board) {
+        int[] pieces = board.getPieceBoards();
+        int whiteActivity = 0;
+        int blackActivity = 0;
 
-        // Switch to Black's perspective
-        board.makeNullMove();
-        BMove[] blackMoves = new MoveGenerator(board).generateMoves(false);
-        int blackMovesCount = blackMoves.length;
-        board.undoNullMove();
+        // Count active pieces for each side
+        for (int sq = 0; sq < 64; sq++) {
+            int piece = pieces[sq];
+            if (piece == BPiece.none) continue;
 
-        return (whiteMovesCount - blackMovesCount) * MOBILITY_WEIGHT;
+            boolean isWhite = BPiece.isWhite(piece);
+            int type = BPiece.getPieceType(piece);
+
+            // Weight by piece type
+            int weight = switch (type) {
+                case BPiece.pawn -> 1;     // Pawns: limited mobility
+                case BPiece.knight -> 3;   // Knights: high activity
+                case BPiece.bishop -> 2;   // Bishops: medium activity
+                case BPiece.rook -> 3;     // Rooks: high activity
+                case BPiece.queen -> 4;    // Queens: highest activity
+                case BPiece.king -> 1;     // Kings: limited in middlegame
+                default -> 0;
+            };
+
+            if (isWhite) {
+                whiteActivity += weight;
+            } else {
+                blackActivity += weight;
+            }
+        }
+
+        return (whiteActivity - blackActivity) * MOBILITY_WEIGHT;
     }
 }
