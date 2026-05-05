@@ -94,7 +94,7 @@ public class Search {
         if (isNthNode(1023))
             checkStop();
 
-        if (depth <= 0) return evaluator.evaluate(board);
+        if (depth <= 0) return quiescence(board, alpha, beta, ply);
 
         int bestScore = -INF;
 
