@@ -5,7 +5,6 @@ import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
 import sopra.steria.evaluation.BadEvaluator;
 import sopra.steria.evaluation.Evaluator;
-import sopra.steria.evaluation.MvvLvaEvaluator;
 import sopra.steria.ordering.BadMoveOrderer;
 import sopra.steria.ordering.MoveOrderer;
 
@@ -23,7 +22,7 @@ public class Search {
     private final MoveOrderer moveOrderer;
 
     public Search() {
-        this.evaluator = new MvvLvaEvaluator();
+        this.evaluator = new BadEvaluator();
         this.moveOrderer = new BadMoveOrderer();
     }
 
