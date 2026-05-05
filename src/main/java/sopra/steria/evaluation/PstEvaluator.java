@@ -4,15 +4,12 @@ import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
 
 public class PstEvaluator implements Evaluator {
-
     private static final int PAWN_VALUE   = 100;
     private static final int KNIGHT_VALUE = 320;
     private static final int BISHOP_VALUE = 330;
     private static final int ROOK_VALUE   = 500;
     private static final int QUEEN_VALUE  = 900;
     private static final int KING_VALUE   = 20000;
-
-
 
     @Override
     public int evaluate(BBoard board) {
@@ -41,10 +38,8 @@ public class PstEvaluator implements Evaluator {
                 default -> 0;
             };
 
-                    score += isWhite ? bonus : -bonus;
+            score += isWhite ? bonus : -bonus;
         }
         return board.isWhiteToMove() ? score : -score;
     }
-
-//
 }
