@@ -3,11 +3,9 @@ package sopra.steria.search;
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BMove;
 import knight.clubbing.movegen.MoveGenerator;
-import sopra.steria.evaluation.PstEvaluator;
 import sopra.steria.evaluation.Evaluator;
 import sopra.steria.evaluation.GoodEvaluator;
 import sopra.steria.ordering.MoveOrderer;
-import sopra.steria.ordering.MvvLvaOrderer;
 import sopra.steria.ordering.GoodOrderer;
 
 import static sopra.steria.EngineConst.INF;

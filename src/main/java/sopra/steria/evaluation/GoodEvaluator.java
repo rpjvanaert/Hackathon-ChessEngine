@@ -2,32 +2,47 @@ package sopra.steria.evaluation;
 
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
-import knight.clubbing.core.PopLsbResult;
 import sopra.steria.helpers.Helpers;
 
 public class GoodEvaluator implements Evaluator {
+    private static final int PAWN_VALUE   = 100;
+    private static final int KNIGHT_VALUE = 320;
+    private static final int BISHOP_VALUE = 330;
+    private static final int ROOK_VALUE   = 500;
+    private static final int QUEEN_VALUE  = 900;
+    private static final int KING_VALUE   = 20000;
+
     @Override
     public int evaluate(BBoard board) {
-        final int whiteScore = materialScore(board, BBoard.whiteIndex);
-        final int blackScore = materialScore(board, BBoard.blackIndex);
-        final int score = whiteScore - blackScore;
-
-        return board.isWhiteToMove() ? score : -score;
-    }
-
-    private int materialScore(final BBoard board, final int color) {
         int score = 0;
+        int[] pieces = board.getPieceBoards(); // length 64, one entry per square
 
-        long bitboard = board.getColorBitboard(color);
-        while (bitboard != 0L) {
-            PopLsbResult result = PopLsbResult.popLsb(bitboard);
-            int squareIndex = result.index;
+        for (int sq= 0; sq < 64; sq++) {
+            int piece = pieces[sq];
+            if(piece == BPiece.none) continue;
 
-            score += Helpers.pieceValue(BPiece.getPieceType(board.getPieceBoards()[squareIndex]));
+            boolean isWhite = BPiece.isWhite(piece);
+            int type = BPiece.getPieceType(piece);
 
-            bitboard = result.remaining;
+            // Tables are from Black's perspective (index 0 = a8).
+            // White squares must be mirrored (sq ^ 56) so rank 1 maps to index 56+.
+            // Black squares are used as-is.
+            int mirroredIndex = isWhite ? (sq ^ 56) : sq;
+
+            int bonus = switch (type) {
+                case BPiece.pawn   -> PAWN_VALUE   + PstTables.PAWN[mirroredIndex];
+                case BPiece.knight -> KNIGHT_VALUE + PstTables.KNIGHT[mirroredIndex];
+                case BPiece.bishop -> BISHOP_VALUE + PstTables.BISHOP[mirroredIndex];
+                case BPiece.rook   -> ROOK_VALUE   + PstTables.ROOK[mirroredIndex];
+                case BPiece.queen  -> QUEEN_VALUE  + PstTables.QUEEN[mirroredIndex];
+                case BPiece.king   -> KING_VALUE   + PstTables.KING[mirroredIndex];
+                default -> 0;
+            };
+
+            score += isWhite ? bonus : -bonus; // PST
+            score += Helpers.pieceValue(type); // Material Value
         }
 
-        return score;
+        return board.isWhiteToMove() ? score : -score;
     }
 }
