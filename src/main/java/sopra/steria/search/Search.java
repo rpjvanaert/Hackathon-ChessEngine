@@ -133,6 +133,62 @@ public class Search {
         return bestScore;
     }
 
+    // Safety margin for delta pruning: roughly the value of a queen
+    private static final int DELTA_MARGIN = 1050;
+
+    /**
+     * Quiescence search — extends the search beyond the horizon by continuing
+     * to search captures (and all moves when in check) until the position is "quiet".
+     * This avoids mis-evaluating positions with hanging pieces.
+     *
+     * <p>Key behaviours:
+     * <ul>
+     *   <li><b>Stand-pat:</b> the side to move can always choose not to capture,
+     *       so the static eval is a lower bound on the true score.</li>
+     *   <li><b>Delta pruning:</b> if even capturing a queen cannot raise alpha, skip.</li>
+     *   <li><b>Check handling:</b> when in check, all evasions are searched (not just
+     *       captures) to avoid missing forced mates.</li>
+     * </ul>
+     */
+    private int quiescence(BBoard board, int alpha, int beta, int ply) {
+        nodes++;
+
+        if (isNthNode(1023)) checkStop();
+
+        boolean inCheck = board.isInCheck();
+
+        if (!inCheck) {
+            int standPat = evaluator.evaluate(board);
+            if (standPat >= beta) return beta;              // stand-pat beta cutoff
+            alpha = Math.max(alpha, standPat);              // stand-pat raises alpha
+            if (standPat + DELTA_MARGIN < alpha) return alpha; // delta prune
+        }
+
+        // In check: generate all evasions; otherwise only captures
+        boolean capturesOnly = !inCheck;
+        BMove[] moves = new MoveGenerator(board).generateMoves(capturesOnly);
+
+        if (inCheck && moves.length == 0) return -MATE_SCORE + ply; // checkmate
+
+        moveOrderer.orderMoves(moves, board, capturesOnly ? null : killers,
+                capturesOnly ? 0 : Math.min(ply, killers.length - 1));
+
+        // When in check there is no stand-pat baseline, so start from -INF
+        int bestScore = inCheck ? -INF : alpha;
+
+        for (BMove move : moves) {
+            board.makeMove(move, true);
+            int score = -quiescence(board, -beta, -alpha, ply + 1);
+            board.undoMove(move, true);
+
+            if (score > bestScore) bestScore = score;
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+
+        return bestScore;
+    }
+
     private boolean isNthNode(int n) {
         return (nodes & n) == 0;
     }
@@ -158,3 +214,4 @@ public class Search {
         }
     }
 }
+
