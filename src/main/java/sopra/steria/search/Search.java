@@ -20,10 +20,12 @@ public class Search {
 
     private final Evaluator evaluator;
     private final MoveOrderer moveOrderer;
+    private BMove[][] killers;
 
     public Search() {
         this.evaluator = new BadEvaluator();
         this.moveOrderer = new GoodOrderer();
+        this.killers = new BMove[32][2];
     }
 
     public SearchResult bestMove(BBoard board, SearchSetting setting) {
@@ -98,7 +100,7 @@ public class Search {
 
         BMove[] nextMoves = new MoveGenerator(board).generateMoves(false);
 
-        moveOrderer.orderMoves(nextMoves, board);
+        moveOrderer.orderMoves(nextMoves, board, killers, ply);
 
         if (nextMoves.length == 0) {
             if (board.isInCheck())
@@ -120,11 +122,19 @@ public class Search {
             alpha = Math.max(alpha, score);
 
             if (alpha >= beta) {
+                if (killers[ply][0] == null || !killers[ply][0].equals(move)) {
+                    killers[ply][1] = killers[ply][0];
+                    killers[ply][0] = move;
+                }
                 break;
             }
         }
 
         return bestScore;
+    }
+
+    private BMove[] getKillersForPly(int ply) {
+        return killers[ply];
     }
 
     private boolean isNthNode(int n) {

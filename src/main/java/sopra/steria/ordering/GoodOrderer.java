@@ -13,17 +13,27 @@ import static sopra.steria.helpers.Helpers.scoreCapture;
  * ordering process:
  * 1. promotions
  * 2. mvv lva
+ * 3. killer moves
+ * 4. quiet moves
  */
 public class GoodOrderer implements MoveOrderer {
 
     @Override
-    public void orderMoves(BMove[] moves, BBoard board) {
+    public void orderMoves(BMove[] moves, BBoard board, BMove[][] killers, int ply) {
         int[] scores = new int[moves.length];
 
         for (int i = 0; i < moves.length; i++) {
             scores[i] = score(moves[i], board);
-        }
 
+
+            if (killers != null && ply >= 0) {
+                if (moves[i].equals(killers[ply][0])) {
+                    scores[i] += 10000;
+                } else if (moves[i].equals(killers[ply][1])) {
+                    scores[i] += 9000;
+                }
+            }
+        }
         sortMovesByScore(moves, scores);
     }
 
