@@ -2,11 +2,12 @@ package sopra.steria.search;
 
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BMove;
+import knight.clubbing.core.BPiece;
 import knight.clubbing.movegen.MoveGenerator;
-import sopra.steria.evaluation.BadEvaluator;
 import sopra.steria.evaluation.Evaluator;
-import sopra.steria.ordering.BadMoveOrderer;
+import sopra.steria.evaluation.GoodEvaluator;
 import sopra.steria.ordering.MoveOrderer;
+import sopra.steria.ordering.GoodOrderer;
 
 import static sopra.steria.EngineConst.INF;
 import static sopra.steria.EngineConst.MATE_SCORE;
@@ -20,10 +21,12 @@ public class Search {
 
     private final Evaluator evaluator;
     private final MoveOrderer moveOrderer;
+    private BMove[][] killers;
 
     public Search() {
-        this.evaluator = new BadEvaluator();
-        this.moveOrderer = new BadMoveOrderer();
+        this.evaluator = new GoodEvaluator();
+        this.moveOrderer = new GoodOrderer();
+        this.killers = new BMove[256][2];
     }
 
     public SearchResult bestMove(BBoard board, SearchSetting setting) {
@@ -31,6 +34,7 @@ public class Search {
         this.setting = setting;
         this.stop = false;
 
+        clearKillers();
         SearchResult bestResult = new SearchResult();
         bestResult.setScore(-INF);
 
@@ -66,6 +70,7 @@ public class Search {
         this.nodes = 0;
 
         BMove[] moves = new MoveGenerator(board).generateMoves(false);
+        moveOrderer.orderMoves(moves, board, killers, 0);
 
         for (BMove move : moves) {
             checkStop();
@@ -92,13 +97,13 @@ public class Search {
         if (isNthNode(1023))
             checkStop();
 
-        if (depth <= 0) return evaluator.evaluate(board);
+        if (depth <= 0) return quiescence(board, alpha, beta, ply);
 
         int bestScore = -INF;
 
         BMove[] nextMoves = new MoveGenerator(board).generateMoves(false);
 
-        moveOrderer.orderMoves(nextMoves, board);
+        moveOrderer.orderMoves(nextMoves, board, killers, ply);
 
         if (nextMoves.length == 0) {
             if (board.isInCheck())
@@ -120,8 +125,71 @@ public class Search {
             alpha = Math.max(alpha, score);
 
             if (alpha >= beta) {
+                int capturedPiece = board.getPieceBoards()[move.targetSquare()];
+                if (capturedPiece == BPiece.none) {
+                    if (killers[ply][0] == null || !killers[ply][0].equals(move)) {
+                        killers[ply][1] = killers[ply][0];
+                        killers[ply][0] = move;
+                    }
+                }
                 break;
             }
+        }
+
+        return bestScore;
+    }
+
+    // Safety margin for delta pruning: roughly the value of a queen
+    private static final int DELTA_MARGIN = 1050;
+
+    /**
+     * Quiescence search — extends the search beyond the horizon by continuing
+     * to search captures (and all moves when in check) until the position is "quiet".
+     * This avoids mis-evaluating positions with hanging pieces.
+     *
+     * <p>Key behaviours:
+     * <ul>
+     *   <li><b>Stand-pat:</b> the side to move can always choose not to capture,
+     *       so the static eval is a lower bound on the true score.</li>
+     *   <li><b>Delta pruning:</b> if even capturing a queen cannot raise alpha, skip.</li>
+     *   <li><b>Check handling:</b> when in check, all evasions are searched (not just
+     *       captures) to avoid missing forced mates.</li>
+     * </ul>
+     */
+    private int quiescence(BBoard board, int alpha, int beta, int ply) {
+        nodes++;
+
+        if (isNthNode(1023)) checkStop();
+
+        boolean inCheck = board.isInCheck();
+
+        if (!inCheck) {
+            int standPat = evaluator.evaluate(board);
+            if (standPat >= beta) return beta;              // stand-pat beta cutoff
+            alpha = Math.max(alpha, standPat);              // stand-pat raises alpha
+            if (standPat + DELTA_MARGIN < alpha) return alpha; // delta prune
+        }
+
+        // In check: generate all evasions; otherwise only captures
+        boolean capturesOnly = !inCheck;
+        BMove[] moves = new MoveGenerator(board).generateMoves(capturesOnly);
+
+        if (inCheck && moves.length == 0) return -MATE_SCORE + ply; // checkmate
+
+        moveOrderer.orderMoves(moves, board, capturesOnly ? null : killers,
+                capturesOnly ? 0 : Math.min(ply, killers.length - 1));
+
+        // When in check there is no stand-pat baseline, so start from -INF
+        int bestScore = inCheck ? -INF : alpha;
+
+        for (BMove move : moves) {
+            board.makeMove(move, true);
+            int score = -quiescence(board, -beta, -alpha, ply + 1);
+            board.undoMove(move, true);
+
+            if (score > bestScore) bestScore = score;
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
         }
 
         return bestScore;
@@ -139,6 +207,12 @@ public class Search {
         return System.currentTimeMillis() - startTime;
     }
 
+    private void clearKillers() {
+        for (int i = 0; i < killers.length; i++) {
+            killers[i][0] = null;
+            killers[i][1] = null;
+        }
+    }
     private void checkStop() {
         if (stop) throw new SearchInterruptedException();
         if (Thread.currentThread().isInterrupted()) {
@@ -152,3 +226,4 @@ public class Search {
         }
     }
 }
+
