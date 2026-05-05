@@ -3,7 +3,6 @@ package sopra.steria.evaluation;
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
 import knight.clubbing.movegen.PrecomputedMoveData;
-import knight.clubbing.movegen.magic.Magic;
 
 public class BadEvaluator implements Evaluator {
     private static final int PAWN_VALUE = 100;
@@ -96,8 +95,14 @@ public class BadEvaluator implements Evaluator {
         int whiteBishopPair = Long.bitCount(board.getBitboard(BPiece.whiteBishop)) >= 2 ? 30 : 0;
         int blackBishopPair = Long.bitCount(board.getBitboard(BPiece.blackBishop)) >= 2 ? 30 : 0;
 
-        int score = (whiteMaterial + whitePst + whiteMobility + whiteBishopPair)
-                  - (blackMaterial + blackPst + blackMobility + blackBishopPair);
+        int whitePawnStructure = evaluatePawnStructure(board, BPiece.white);
+        int blackPawnStructure = evaluatePawnStructure(board, BPiece.black);
+
+        int whiteKingSafety = evaluateKingSafety(board, BBoard.whiteIndex);
+        int blackKingSafety = evaluateKingSafety(board, BBoard.blackIndex);
+
+        int score = (whiteMaterial + whitePst + whiteMobility + whiteBishopPair + whitePawnStructure + whiteKingSafety)
+                  - (blackMaterial + blackPst + blackMobility + blackBishopPair + blackPawnStructure + blackKingSafety);
 
         return board.isWhiteToMove() ? score : -score;
     }
@@ -137,10 +142,9 @@ public class BadEvaluator implements Evaluator {
     private int countMobility(BBoard board, int colorIndex) {
         int color = colorIndex == BBoard.whiteIndex ? BPiece.white : BPiece.black;
         long friendly = board.getColorBitboard(colorIndex);
-        long allPieces = board.getAllPiecesBoard();
         int mobility = 0;
 
-        // Knight mobility
+        // Knight mobility (uses precomputed table - very fast)
         long knights = board.getBitboard(BPiece.knight | color);
         while (knights != 0) {
             int sq = Long.numberOfTrailingZeros(knights);
@@ -148,32 +152,74 @@ public class BadEvaluator implements Evaluator {
             knights &= knights - 1;
         }
 
-        // Bishop mobility
-        long bishops = board.getBitboard(BPiece.bishop | color);
-        while (bishops != 0) {
-            int sq = Long.numberOfTrailingZeros(bishops);
-            mobility += Long.bitCount(Magic.getBishopAttacks(sq, allPieces) & ~friendly);
-            bishops &= bishops - 1;
-        }
-
-        // Rook mobility
-        long rooks = board.getBitboard(BPiece.rook | color);
-        while (rooks != 0) {
-            int sq = Long.numberOfTrailingZeros(rooks);
-            mobility += Long.bitCount(Magic.getRookAttacks(sq, allPieces) & ~friendly);
-            rooks &= rooks - 1;
-        }
-
-        // Queen mobility
-        long queens = board.getBitboard(BPiece.queen | color);
-        while (queens != 0) {
-            int sq = Long.numberOfTrailingZeros(queens);
-            mobility += Long.bitCount(
-                (Magic.getRookAttacks(sq, allPieces) | Magic.getBishopAttacks(sq, allPieces)) & ~friendly
-            );
-            queens &= queens - 1;
-        }
-
         return mobility * MOBILITY_WEIGHT;
     }
+
+    private int evaluatePawnStructure(BBoard board, int color) {
+        int score = 0;
+        long pawns = board.getBitboard(BPiece.pawn | color);
+        long enemyPawns = board.getBitboard(BPiece.pawn | (color == BPiece.white ? BPiece.black : BPiece.white));
+        boolean isWhite = color == BPiece.white;
+
+        long pawnsCopy = pawns;
+        while (pawnsCopy != 0) {
+            int sq = Long.numberOfTrailingZeros(pawnsCopy);
+            int file = sq & 7;
+            int rank = sq >> 3;
+
+            // Doubled pawns: another pawn on the same file
+            long fileMask = FILE_MASKS[file];
+            if (Long.bitCount(pawns & fileMask) > 1) {
+                score -= 15;
+            }
+
+            // Isolated pawns: no friendly pawns on adjacent files
+            long adjacentFiles = 0;
+            if (file > 0) adjacentFiles |= FILE_MASKS[file - 1];
+            if (file < 7) adjacentFiles |= FILE_MASKS[file + 1];
+            if ((pawns & adjacentFiles) == 0) {
+                score -= 20;
+            }
+
+            // Passed pawns: no enemy pawns on same or adjacent files ahead
+            long passedMask = adjacentFiles | fileMask;
+            long aheadMask = isWhite ? ~((1L << ((rank + 1) * 8)) - 1) : ((1L << (rank * 8)) - 1);
+            if ((enemyPawns & passedMask & aheadMask) == 0) {
+                int bonus = isWhite ? rank : (7 - rank);
+                score += bonus * 10;
+            }
+
+            pawnsCopy &= pawnsCopy - 1;
+        }
+        return score;
+    }
+
+    private int evaluateKingSafety(BBoard board, int colorIndex) {
+        int color = colorIndex == BBoard.whiteIndex ? BPiece.white : BPiece.black;
+        int kingSquare = board.getKingSquare(colorIndex);
+        int kingFile = kingSquare & 7;
+        long pawns = board.getBitboard(BPiece.pawn | color);
+        int score = 0;
+
+        // Penalize open files near the king (no friendly pawns shielding)
+        for (int f = Math.max(0, kingFile - 1); f <= Math.min(7, kingFile + 1); f++) {
+            if ((pawns & FILE_MASKS[f]) == 0) {
+                score -= 15;
+            }
+        }
+
+        return score;
+    }
+
+    // File masks for pawn structure
+    private static final long[] FILE_MASKS = {
+        0x0101010101010101L,       // a-file
+        0x0202020202020202L,       // b-file
+        0x0404040404040404L,       // c-file
+        0x0808080808080808L,       // d-file
+        0x1010101010101010L,       // e-file
+        0x2020202020202020L,       // f-file
+        0x4040404040404040L,       // g-file
+        0x8080808080808080L        // h-file
+    };
 }
