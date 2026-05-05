@@ -14,17 +14,17 @@ public class BadMoveOrderer implements MoveOrderer {
     private static final int[] VICTIM_SCORE = {0, 100, 320, 330, 500, 900, 0};
 
     @Override
-    public void orderMoves(BMove[] moves, BBoard board, short[] killers) {
+    public void orderMoves(BMove[] moves, BBoard board, short[] killers, int[][] history) {
         int[] scores = new int[moves.length];
 
         for (int i = 0; i < moves.length; i++) {
-            scores[i] = score(moves[i], board, killers);
+            scores[i] = score(moves[i], board, killers, history);
         }
 
         sortMovesByScore(moves, scores);
     }
 
-    private int score(BMove move, BBoard board, short[] killers) {
+    private int score(BMove move, BBoard board, short[] killers, int[][] history) {
         int targetPiece = board.getPieceBoards()[move.targetSquare()];
 
         // Captures: MVV-LVA (most valuable victim - least valuable attacker)
@@ -45,6 +45,11 @@ public class BadMoveOrderer implements MoveOrderer {
         if (killers != null) {
             if (move.value() == killers[0]) return KILLER_SCORE_1;
             if (move.value() == killers[1]) return KILLER_SCORE_2;
+        }
+
+        // History heuristic
+        if (history != null) {
+            return history[move.startSquare()][move.targetSquare()];
         }
 
         return 0;

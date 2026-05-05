@@ -2,6 +2,8 @@ package sopra.steria.evaluation;
 
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
+import knight.clubbing.movegen.PrecomputedMoveData;
+import knight.clubbing.movegen.magic.Magic;
 
 public class BadEvaluator implements Evaluator {
     private static final int PAWN_VALUE = 100;
@@ -9,6 +11,9 @@ public class BadEvaluator implements Evaluator {
     private static final int BISHOP_VALUE = 330;
     private static final int ROOK_VALUE = 500;
     private static final int QUEEN_VALUE = 900;
+    private static final int MOBILITY_WEIGHT = 4;
+
+    private static final long[] KNIGHT_ATTACKS = PrecomputedMoveData.getInstance().getKnightAttackBitboards();
 
     // Piece-Square Tables (from white's perspective, index 0 = a1, index 63 = h8)
     private static final int[] PAWN_PST = {
@@ -85,7 +90,14 @@ public class BadEvaluator implements Evaluator {
         int whitePst = countPST(board, BPiece.white);
         int blackPst = countPST(board, BPiece.black);
 
-        int score = (whiteMaterial + whitePst) - (blackMaterial + blackPst);
+        int whiteMobility = countMobility(board, BBoard.whiteIndex);
+        int blackMobility = countMobility(board, BBoard.blackIndex);
+
+        int whiteBishopPair = Long.bitCount(board.getBitboard(BPiece.whiteBishop)) >= 2 ? 30 : 0;
+        int blackBishopPair = Long.bitCount(board.getBitboard(BPiece.blackBishop)) >= 2 ? 30 : 0;
+
+        int score = (whiteMaterial + whitePst + whiteMobility + whiteBishopPair)
+                  - (blackMaterial + blackPst + blackMobility + blackBishopPair);
 
         return board.isWhiteToMove() ? score : -score;
     }
@@ -120,5 +132,48 @@ public class BadEvaluator implements Evaluator {
             bitboard &= bitboard - 1;
         }
         return score;
+    }
+
+    private int countMobility(BBoard board, int colorIndex) {
+        int color = colorIndex == BBoard.whiteIndex ? BPiece.white : BPiece.black;
+        long friendly = board.getColorBitboard(colorIndex);
+        long allPieces = board.getAllPiecesBoard();
+        int mobility = 0;
+
+        // Knight mobility
+        long knights = board.getBitboard(BPiece.knight | color);
+        while (knights != 0) {
+            int sq = Long.numberOfTrailingZeros(knights);
+            mobility += Long.bitCount(KNIGHT_ATTACKS[sq] & ~friendly);
+            knights &= knights - 1;
+        }
+
+        // Bishop mobility
+        long bishops = board.getBitboard(BPiece.bishop | color);
+        while (bishops != 0) {
+            int sq = Long.numberOfTrailingZeros(bishops);
+            mobility += Long.bitCount(Magic.getBishopAttacks(sq, allPieces) & ~friendly);
+            bishops &= bishops - 1;
+        }
+
+        // Rook mobility
+        long rooks = board.getBitboard(BPiece.rook | color);
+        while (rooks != 0) {
+            int sq = Long.numberOfTrailingZeros(rooks);
+            mobility += Long.bitCount(Magic.getRookAttacks(sq, allPieces) & ~friendly);
+            rooks &= rooks - 1;
+        }
+
+        // Queen mobility
+        long queens = board.getBitboard(BPiece.queen | color);
+        while (queens != 0) {
+            int sq = Long.numberOfTrailingZeros(queens);
+            mobility += Long.bitCount(
+                (Magic.getRookAttacks(sq, allPieces) | Magic.getBishopAttacks(sq, allPieces)) & ~friendly
+            );
+            queens &= queens - 1;
+        }
+
+        return mobility * MOBILITY_WEIGHT;
     }
 }

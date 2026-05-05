@@ -24,6 +24,7 @@ public class Search {
     private final Evaluator evaluator;
     private final MoveOrderer moveOrderer;
     private short[][] killerMoves;
+    private int[][] historyMoves;
 
     public Search() {
         this.evaluator = new BadEvaluator();
@@ -35,6 +36,7 @@ public class Search {
         this.setting = setting;
         this.stop = false;
         this.killerMoves = new short[MAX_PLY][2];
+        this.historyMoves = new int[64][64];
 
         SearchResult bestResult = new SearchResult();
         bestResult.setScore(-INF);
@@ -71,7 +73,7 @@ public class Search {
         this.nodes = 0;
 
         BMove[] moves = new MoveGenerator(board).generateMoves(false);
-        moveOrderer.orderMoves(moves, board, killerMoves[0]);
+        moveOrderer.orderMoves(moves, board, killerMoves[0], historyMoves);
 
         for (BMove move : moves) {
             checkStop();
@@ -98,23 +100,31 @@ public class Search {
         if (isNthNode(1023))
             checkStop();
 
-        if (depth <= 0) return evaluator.evaluate(board);
+        if (depth <= 0) return quiescence(board, alpha, beta, ply);
+
+        if (board.isDrawByRepetition()) {
+            return -50; // Contempt: strongly prefer to avoid draws
+        }
+
+        // Null move pruning: skip our turn and see if opponent can still beat beta
+        if (depth >= 3 && !board.isInCheck()) {
+            board.makeNullMove();
+            int nullScore = -negamax(board, depth - 3, -beta, -beta + 1, ply + 1);
+            board.undoNullMove();
+            if (nullScore >= beta) return beta;
+        }
 
         int bestScore = -INF;
 
         BMove[] nextMoves = new MoveGenerator(board).generateMoves(false);
 
-        moveOrderer.orderMoves(nextMoves, board, killerMoves[ply]);
+        moveOrderer.orderMoves(nextMoves, board, killerMoves[ply], historyMoves);
 
         if (nextMoves.length == 0) {
             if (board.isInCheck())
                 return -MATE_SCORE + ply;
             else
                 return 0;
-        }
-
-        if (board.isDrawByRepetition()) {
-            return 0;
         }
 
         for (BMove move : nextMoves) {
@@ -133,12 +143,39 @@ public class Search {
                         killerMoves[ply][1] = killerMoves[ply][0];
                         killerMoves[ply][0] = move.value();
                     }
+                    historyMoves[move.startSquare()][move.targetSquare()] += depth * depth;
                 }
                 break;
             }
         }
 
         return bestScore;
+    }
+
+    private int quiescence(BBoard board, int alpha, int beta, int ply) {
+        nodes++;
+
+        if (isNthNode(1023))
+            checkStop();
+
+        int standPat = evaluator.evaluate(board);
+
+        if (standPat >= beta) return beta;
+        if (standPat > alpha) alpha = standPat;
+
+        BMove[] captures = new MoveGenerator(board).generateMoves(true);
+        moveOrderer.orderMoves(captures, board, null, null);
+
+        for (BMove move : captures) {
+            board.makeMove(move, true);
+            int score = -quiescence(board, -beta, -alpha, ply + 1);
+            board.undoMove(move, true);
+
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+
+        return alpha;
     }
 
     private boolean isNthNode(int n) {
