@@ -1,5 +1,7 @@
 package sopra.steria.evaluation;
 
+import static sopra.steria.utilities.PieceUtilities.getMaterialValue;
+
 import knight.clubbing.core.BBoard;
 import knight.clubbing.core.BPiece;
 
@@ -33,16 +35,4 @@ public class GoodEvaluator implements Evaluator {
         return score;
     }
 
-    public static int getMaterialValue(int piece) {
-        int pieceType = BPiece.getPieceType(piece);
-        return switch (pieceType) {
-            case BPiece.pawn -> 1;
-            case BPiece.knight -> 3;
-            case BPiece.bishop -> 3;
-            case BPiece.rook -> 5;
-            case BPiece.queen -> 9;
-            case BPiece.king -> 6;
-            default -> throw new IllegalArgumentException("Invalid piece: " + pieceType);
-        };
-    }
 }
